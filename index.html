@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -36,13 +36,22 @@
         </div>
       </div>
 
-      <button id="btn-edit-name" class="btn-name-trigger">&#9999; Set name</button>
+      <button id="btn-edit-name" class="btn-name-trigger">Set name</button>
     </section>
 
     <!-- Focus Timer Widget -->
     <section class="card timer-widget">
       <h2>Focus Timer</h2>
-      <div id="timer-display">25:00</div>
+
+      <div class="timer-ring-wrapper">
+        <svg class="timer-ring" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="timer-ring-track" cx="60" cy="60" r="54" />
+          <circle class="timer-ring-progress" cx="60" cy="60" r="54" />
+        </svg>
+        <div id="timer-display">25:00</div>
+      </div>
+
+      <p id="timer-status" class="timer-status" aria-live="polite"></p>
 
       <div class="timer-controls">
         <button id="btn-start">Start</button>
@@ -50,11 +59,6 @@
         <button id="btn-reset">Reset</button>
       </div>
 
-      <!--
-        Duration picker — Change Pomodoro Time challenge.
-        Sits below the control buttons; only affects the timer when
-        the user clicks Apply (or presses Enter in the input).
-      -->
       <div class="timer-duration-row">
         <label for="duration-input" class="duration-label">Duration (min)</label>
         <input
@@ -89,6 +93,13 @@
         <button class="sort-btn active" data-sort="creation">Creation Order</button>
         <button class="sort-btn" data-sort="alphabetical">A&#8211;Z</button>
         <button class="sort-btn" data-sort="completion">By Status</button>
+      </div>
+
+      <div id="task-progress" class="task-progress" style="display:none;">
+        <span class="task-progress-text">0 / 0 done</span>
+        <div class="task-progress-bar">
+          <div class="task-progress-fill" style="width:0%;"></div>
+        </div>
       </div>
 
       <ul id="task-list" aria-label="Task list"></ul>
