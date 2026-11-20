@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Life Dashboard</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="top-bar">
+    <h1 class="app-title">Life Dashboard</h1>
+    <button id="btn-theme-toggle">&#127769; Dark</button>
+  </header>
+
+  <main class="dashboard-grid">
+
+    <!-- Greeting Widget -->
+    <section class="card greeting-widget">
+      <h2 id="greeting-text">Good Morning!</h2>
+      <p id="current-time">00:00</p>
+      <p id="current-date">Monday, January 1, 2024</p>
+
+      <div id="name-editor" class="name-editor hidden">
+        <input
+          type="text"
+          id="name-input"
+          placeholder="Enter your name&#8230;"
+          aria-label="Your preferred name"
+          maxlength="40"
+        />
+        <div class="name-editor-actions">
+          <button id="btn-save-name">Save</button>
+          <button id="btn-cancel-name" class="btn-ghost">Cancel</button>
+        </div>
+      </div>
+
+      <button id="btn-edit-name" class="btn-name-trigger">&#9999; Set name</button>
+    </section>
+
+    <!-- Focus Timer Widget -->
+    <section class="card timer-widget">
+      <h2>Focus Timer</h2>
+      <div id="timer-display">25:00</div>
+
+      <div class="timer-controls">
+        <button id="btn-start">Start</button>
+        <button id="btn-stop">Stop</button>
+        <button id="btn-reset">Reset</button>
+      </div>
+
+      <!--
+        Duration picker — Change Pomodoro Time challenge.
+        Sits below the control buttons; only affects the timer when
+        the user clicks Apply (or presses Enter in the input).
+      -->
+      <div class="timer-duration-row">
+        <label for="duration-input" class="duration-label">Duration (min)</label>
+        <input
+          type="number"
+          id="duration-input"
+          min="1"
+          max="999"
+          value="25"
+          aria-label="Timer duration in minutes"
+        />
+        <button id="btn-apply-duration">Apply</button>
+      </div>
+      <p id="duration-error" class="error-message" aria-live="polite"></p>
+    </section>
+
+    <!-- To-Do List Widget -->
+    <section class="card todo-widget">
+      <h2>To-Do List</h2>
+
+      <div class="task-input-row">
+        <input
+          type="text"
+          id="task-input"
+          placeholder="Add a new task&#8230;"
+          aria-label="New task description"
+        />
+        <button id="btn-add-task">Add Task</button>
+      </div>
+      <p id="task-error" class="error-message" aria-live="polite"></p>
+
+      <div class="sort-controls">
+        <button class="sort-btn active" data-sort="creation">Creation Order</button>
+        <button class="sort-btn" data-sort="alphabetical">A&#8211;Z</button>
+        <button class="sort-btn" data-sort="completion">By Status</button>
+      </div>
+
+      <ul id="task-list" aria-label="Task list"></ul>
+    </section>
+
+    <!-- Quick Links Widget -->
+    <section class="card links-widget">
+      <h2>Quick Links</h2>
+
+      <div class="link-input-group">
+        <input
+          type="text"
+          id="link-name-input"
+          placeholder="Link name"
+          aria-label="Link name"
+        />
+        <input
+          type="text"
+          id="link-url-input"
+          placeholder="URL (e.g. https://example.com)"
+          aria-label="Link URL"
+        />
+        <button id="btn-add-link">Add Link</button>
+      </div>
+      <p id="link-error" class="error-message" aria-live="polite"></p>
+
+      <ul id="links-list" aria-label="Quick links list"></ul>
+    </section>
+
+  </main>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
