@@ -205,9 +205,19 @@ function updateTimerButtons() {
   const btnStart = document.getElementById('btn-start');
   const btnStop  = document.getElementById('btn-stop');
   const btnReset = document.getElementById('btn-reset');
+  if (!btnStart || !btnStop || !btnReset) return;
+
+  // Start: enabled when stopped AND there is time remaining
   btnStart.disabled = timerRunning || timerSeconds === 0;
-  btnStop.disabled  = !timerRunning;
-  btnReset.disabled = false;
+
+  // Stop: enabled only while the timer is actively counting down
+  btnStop.disabled = !timerRunning;
+
+  // Reset: disabled when the timer is at its full duration AND not running.
+  // This covers initial load and the moment after clicking Reset.
+  // In every other state (running, paused, or completed) Reset is enabled.
+  const fullDuration = timerDurationMinutes * 60;
+  btnReset.disabled = !timerRunning && timerSeconds === fullDuration;
 }
 
 // ============================================================

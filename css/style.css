@@ -228,6 +228,40 @@ input[type="url"]:focus {
 }
 
 /* ============================================================
+   Focus Timer - button states
+   Start is always accent-colored (blue) so it is always the
+   prominent action. Stop and Reset default to the border/muted
+   color when inactive (disabled), and switch to accent when
+   enabled - matching the "active = blue, inactive = gray"
+   requirement. The global button:disabled { opacity: 0.4 } still
+   applies on top, further dimming the inactive states.
+   ============================================================ */
+
+/* Start: accent color in all states (always the primary CTA) */
+#btn-start {
+  background-color: var(--accent-color);
+  color: var(--card-bg);
+  transition: background-color 0.3s ease, color 0.3s ease, opacity 0.3s ease;
+}
+
+/*
+  Stop and Reset: gray (border tone) when inactive/disabled.
+  Enabled state switches to accent so they read as clickable.
+*/
+#btn-stop,
+#btn-reset {
+  background-color: var(--border-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease, opacity 0.3s ease;
+}
+
+#btn-stop:not(:disabled),
+#btn-reset:not(:disabled) {
+  background-color: var(--accent-color);
+  color: var(--card-bg);
+}
+
+/* ============================================================
    Change Pomodoro Time — duration picker row
    Sits below .timer-controls inside .timer-widget.
    Label + number input + Apply button on one line; wraps on
@@ -259,10 +293,10 @@ input[type="url"]:focus {
   #duration-input (type="number")
   Matches the look of the existing text inputs: same background,
   border, border-radius, and padding. Width is intentionally narrow
-  ��� only needs to hold up to three digits.
-  Spinner arrows are kept visible so the user can increment/decrement
-  without typing.
+  and only needs to hold up to three digits.
+  Spinner arrows are hidden so users can enter the duration manually.
 */
+
 input[type="number"]#duration-input {
   background-color: var(--bg-color);
   color: var(--text-color);
@@ -282,19 +316,18 @@ input[type="number"]#duration-input:focus {
 }
 
 /*
-  Always show the native spinner arrows on #duration-input.
-  By default, Chromium hides them until the input is focused/hovered.
-  Targeting the inner-spin-button pseudo-element with opacity:1 and
-  a fixed width forces them to stay visible at all times.
-  Firefox does not use this pseudo-element but shows the spinner
-  natively, so no Firefox-specific rule is needed.
+  Hide the native spinner arrows on #duration-input.
+  Users type their duration directly with the keyboard.
+  Chromium/Safari: -webkit-appearance:none removes the arrow widget entirely.
+  Firefox:         -moz-appearance:textfield removes Firefox's own spinner.
 */
 input[type="number"]#duration-input::-webkit-inner-spin-button,
 input[type="number"]#duration-input::-webkit-outer-spin-button {
-  opacity: 1;
-  /* Prevent the browser from shrinking the arrow area on some versions */
-  -webkit-appearance: inner-spin-button;
+  -webkit-appearance: none;
+  margin: 0;
 }
+
+
 
 /* Greeting widget text sizing */
 #greeting-text {
@@ -303,7 +336,9 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
   margin-bottom: 0.25rem;
 }
 
-#current-time {
+#current-time {input[type="number"]#duration-input {
+  appearance: textfield;
+}
   font-size: 2rem;
   font-weight: 600;
   margin-bottom: 0.1rem;
@@ -444,4 +479,99 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
 .btn-ghost:hover:not(:disabled) {
   background-color: var(--border-color);
   opacity: 1;
+}
+
+/* ============================================================
+   Theme toggle switch
+   Built entirely on #btn-theme-toggle with ::before / ::after.
+   No HTML changes required — the JS textContent update still
+   works and acts as the accessible label (text is visually hidden).
+
+   Dimensions chosen to match the top-bar height and existing
+   button sizing. Colors use only the existing CSS variables.
+
+   Light mode: thumb sits on the left, track uses --border-color.
+   Dark  mode: thumb sits on the right, track uses --accent-color.
+   Both states transition smoothly over 0.3s.
+   ============================================================ */
+
+#btn-theme-toggle {
+  /* Override the global button styles */
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+
+  /* Pill dimensions: wide enough for thumb travel + padding */
+  width:  3.25rem;   /* 52px */
+  height: 1.75rem;   /* 28px */
+  padding: 0;
+  border-radius: 999px;
+
+  /* Track color in light mode — muted border tone */
+  background-color: var(--border-color);
+  border: 2px solid var(--border-color);
+
+  /* Hide the emoji/text label visually; keep it for accessibility */
+  font-size: 0;
+  overflow: hidden;
+
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Thumb — the sliding circle */
+#btn-theme-toggle::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  width:  1.25rem;   /* 20px */
+  height: 1.25rem;
+  border-radius: 50%;
+  background-color: var(--card-bg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+
+  transition: left 0.3s ease, background-color 0.3s ease;
+}
+
+/* Moon icon — sits on the right side of the track in light mode */
+#btn-theme-toggle::before {
+  content: '\1F319';   /* 🌙 */
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0.75;
+  transition: opacity 0.2s ease;
+}
+
+/* ── Dark mode active ───────────────────────────── */
+
+/* Track becomes accent color */
+[data-theme="dark"] #btn-theme-toggle {
+  background-color: var(--accent-color);
+  border-color:     var(--accent-color);
+}
+
+/* Thumb slides to the right */
+[data-theme="dark"] #btn-theme-toggle::after {
+  left: calc(100% - 1.25rem - 2px);
+}
+
+/* Switch icon to sun when dark mode is on */
+[data-theme="dark"] #btn-theme-toggle::before {
+  content: '\2600\FE0F';   /* ☀️ */
+  right: auto;
+  left: 5px;
+}
+
+/* Hover: subtle lift, no color change (opacity from global rule is fine) */
+#btn-theme-toggle:hover:not(:disabled) {
+  opacity: 0.9;
 }
