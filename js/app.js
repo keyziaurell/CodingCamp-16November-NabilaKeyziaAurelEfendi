@@ -1,15 +1,23 @@
-// app.js — application logic will be added in Tasks 4–21
+﻿// app.js — Life Dashboard application logic
 
-// --- State Variables ---
-let tasks = [];
-let links = [];
-let timerSeconds = 1500;      // never persisted to Local Storage
-let timerRunning = false;     // never persisted to Local Storage
-let timerIntervalId = null;   // never persisted to Local Storage
+// ============================================================
+// State Variables
+// ============================================================
+let tasks        = [];
+let links        = [];
+let timerSeconds = 1500;      // never persisted
+let timerRunning = false;     // never persisted
+let timerIntervalId = null;   // never persisted
 let currentTheme = 'light';
-let currentSort = 'creation'; // never persisted to Local Storage
+let currentSort  = 'creation'; // never persisted
 
-// --- Local Storage Module (Task 5) ---
+// Bonus — Custom Name in Greeting
+// Loaded from localStorage key "ld_name" (plain string, no JSON).
+let userName = '';
+
+// ============================================================
+// Local Storage Module (Task 5)
+// ============================================================
 
 function loadFromStorage() {
   // ld_tasks
@@ -30,9 +38,14 @@ function loadFromStorage() {
     links = [];
   }
 
-  // ld_theme — read as plain string, do NOT use JSON.parse()
+  // ld_theme — plain string, never JSON.parse()
   const savedTheme = localStorage.getItem('ld_theme');
   currentTheme = savedTheme === 'dark' ? 'dark' : 'light';
+
+  // ld_name — plain string, never JSON.parse()
+  // If the key was never set, getItem returns null; treat that as empty string.
+  const savedName = localStorage.getItem('ld_name');
+  userName = (typeof savedName === 'string') ? savedName : '';
 }
 
 function saveTasksToStorage() {
@@ -44,124 +57,207 @@ function saveLinksToStorage() {
 }
 
 function saveThemeToStorage(theme) {
-  // Store as plain string — never use JSON.stringify here
   localStorage.setItem('ld_theme', theme);
 }
 
-// --- Greeting Widget (Task 7) ---
+// ============================================================
+// Greeting Widget (Task 7)
+// ============================================================
 
 function updateGreeting() {
-  const now = new Date();
-  const hours = now.getHours();
+  const now   = new Date();
+  const hours   = now.getHours();
   const minutes = now.getMinutes();
 
   // 7.1 — Time and date display
   const hh = String(hours).padStart(2, '0');
   const mm = String(minutes).padStart(2, '0');
-  document.getElementById('current-time').textContent = `${hh}:${mm}`;
+  document.getElementById('current-time').textContent = hh + ':' + mm;
 
   document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', {
     weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+    year:    'numeric',
+    month:   'long',
+    day:     'numeric'
   });
 
   // 7.2 — Time-based greeting band
-  let greeting;
+  let band;
   if (hours >= 5 && hours <= 11) {
-    greeting = 'Good Morning';
+    band = 'Good Morning';
   } else if (hours >= 12 && hours <= 17) {
-    greeting = 'Good Afternoon';
+    band = 'Good Afternoon';
   } else if (hours >= 18 && hours <= 20) {
-    greeting = 'Good Evening';
+    band = 'Good Evening';
   } else {
-    greeting = 'Good Night';
+    band = 'Good Night';
   }
-  document.getElementById('greeting-text').textContent = greeting;
+
+  // Bonus — append the saved name when present.
+  // No name  ->  "Good Morning!"
+  // Name set ->  "Good Morning, Nabila!"
+  // The exclamation mark is always added exactly once; no double punctuation.
+  const suffix = userName.trim() ? ', ' + userName.trim() + '!' : '!';
+  document.getElementById('greeting-text').textContent = band + suffix;
 }
 
-// --- Focus Timer — display and tick (Task 8) ---
+// ============================================================
+// Bonus — Custom Name in Greeting
+// ============================================================
 
-// 8.1 — Render the current timerSeconds value as MM:SS in #timer-display
+/*
+  updateNameUI
+  Syncs the trigger button label and the editor input with the
+  current value of `userName`. Called after every save/remove.
+*/
+function updateNameUI() {
+  const triggerBtn = document.getElementById('btn-edit-name');
+  const nameInput  = document.getElementById('name-input');
+
+  // Button label tells the user whether they are setting or editing.
+  triggerBtn.textContent = userName ? '✏ Edit name' : '✏ Set name';
+
+  // Pre-fill the input with the saved name so the user can edit in place.
+  nameInput.value = userName;
+}
+
+/*
+  openNameEditor
+  Shows #name-editor and hides the trigger button, then moves
+  keyboard focus into the input field for immediate typing.
+*/
+function openNameEditor() {
+  const editor     = document.getElementById('name-editor');
+  const triggerBtn = document.getElementById('btn-edit-name');
+
+  editor.classList.remove('hidden');
+  triggerBtn.classList.add('hidden');
+
+  // Focus the input so the user can type straight away.
+  document.getElementById('name-input').focus();
+}
+
+/*
+  closeNameEditor
+  Hides the editor panel and restores the trigger button.
+  Does NOT modify userName — just closes the UI.
+*/
+function closeNameEditor() {
+  document.getElementById('name-editor').classList.add('hidden');
+  document.getElementById('btn-edit-name').classList.remove('hidden');
+}
+
+/*
+  saveName
+  Reads the input, trims whitespace, persists to localStorage,
+  updates the greeting immediately, and closes the editor.
+
+  Empty input = remove the name (greeting reverts to "Good Morning!").
+  Non-empty input = save and display "Good Morning, Nabila!".
+*/
+function saveName() {
+  const trimmed = document.getElementById('name-input').value.trim();
+
+  userName = trimmed;
+
+  if (trimmed === '') {
+    // User cleared the name — remove the key from storage entirely.
+    localStorage.removeItem('ld_name');
+  } else {
+    // Store as a plain string, consistent with ld_theme.
+    localStorage.setItem('ld_name', trimmed);
+  }
+
+  updateGreeting();   // refresh greeting text with the new name
+  updateNameUI();     // flip trigger label between "Set name" and "Edit name"
+  closeNameEditor();  // hide the editor, restore the trigger button
+}
+
+/*
+  cancelName
+  Discards any unsaved typing and closes the editor.
+  Restores the input to the last-saved userName so the next
+  time the editor opens it still shows the correct value.
+*/
+function cancelName() {
+  document.getElementById('name-input').value = userName;
+  closeNameEditor();
+}
+
+// ============================================================
+// Focus Timer — display and tick (Task 8)
+// ============================================================
+
 function renderTimerDisplay() {
   const minutes = Math.floor(timerSeconds / 60);
   const seconds = timerSeconds % 60;
   const display = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
   const el = document.getElementById('timer-display');
   el.textContent = display;
-  el.classList.remove('timer-complete'); // clear completion indicator on any re-render
+  el.classList.remove('timer-complete');
 }
 
-// 8.2 — Decrement timerSeconds by one; update display; stop and signal completion at 00:00
 function timerTick() {
   timerSeconds = Math.max(0, timerSeconds - 1);
   renderTimerDisplay();
 
   if (timerSeconds === 0) {
-    stopTimer(); // clears interval, sets timerRunning = false (implemented in Task 9)
+    stopTimer();
     const display = document.getElementById('timer-display');
     display.textContent = 'Session complete!';
     display.classList.add('timer-complete');
   }
 }
 
-// --- Focus Timer — controls (Task 9) ---
+// ============================================================
+// Focus Timer — controls (Task 9)
+// ============================================================
 
-// 9.1 — Start the countdown; guard against double-start and exhausted timer
 function startTimer() {
-  if (timerRunning === true) return;   // already running — do nothing
-  if (timerSeconds === 0) return;      // exhausted — user must Reset first
-  timerRunning = true;
+  if (timerRunning === true) return;
+  if (timerSeconds === 0)   return;
+  timerRunning    = true;
   timerIntervalId = setInterval(timerTick, 1000);
   updateTimerButtons();
 }
 
-// 9.2 — Halt the countdown; preserve remaining timerSeconds
 function stopTimer() {
   clearInterval(timerIntervalId);
   timerIntervalId = null;
-  timerRunning = false;
-  // timerSeconds is intentionally NOT modified here
+  timerRunning    = false;
   updateTimerButtons();
 }
 
-// 9.3 — Reset the timer to 25:00 in Stopped state
 function resetTimer() {
-  stopTimer();              // clears interval, nulls timerIntervalId, sets timerRunning = false
+  stopTimer();
   timerSeconds = 1500;
   renderTimerDisplay();
   updateTimerButtons();
 }
 
-// 9.4 — Sync button disabled states with current timer state
 function updateTimerButtons() {
   const btnStart = document.getElementById('btn-start');
   const btnStop  = document.getElementById('btn-stop');
   const btnReset = document.getElementById('btn-reset');
 
-  // Disable Start when running OR when timer is exhausted (00:00)
   btnStart.disabled = timerRunning || timerSeconds === 0;
-
-  // Disable Stop when not running
-  btnStop.disabled = !timerRunning;
-
-  // Reset is always enabled
+  btnStop.disabled  = !timerRunning;
   btnReset.disabled = false;
 }
 
-// --- To-Do List — duplicate prevention (Task 11) ---
+// ============================================================
+// To-Do List — duplicate prevention (Task 11)
+// ============================================================
 
-// 11.1 — Return true if any task (excluding the one with excludeId) has a matching description
 function isDuplicate(desc, excludeId) {
   const normalized = desc.trim().toLowerCase();
   return tasks.some(task => task.id !== excludeId && task.description.trim().toLowerCase() === normalized);
 }
 
+// ============================================================
+// To-Do List — complete and delete (Task 15)
+// ============================================================
 
-// --- To-Do List — complete and delete (Task 15) ---
-
-// 15.1 — Toggle the completed state of a task by id
 function toggleComplete(id) {
   const task = tasks.find(t => t.id === id);
   if (!task) return;
@@ -170,22 +266,21 @@ function toggleComplete(id) {
   renderTasks();
 }
 
-// 15.2 — Remove a task from the tasks array by id
 function deleteTask(id) {
   tasks = tasks.filter(t => t.id !== id);
   saveTasksToStorage();
   renderTasks();
 }
 
-// --- To-Do List — add task (Task 13) ---
+// ============================================================
+// To-Do List — add task (Task 13)
+// ============================================================
 
-// 13.1 / 13.2 — Validate and add a new task from #task-input
 function addTask() {
-  const input = document.getElementById('task-input');
+  const input   = document.getElementById('task-input');
   const errorEl = document.getElementById('task-error');
   const trimmed = input.value.trim();
 
-  // 13.1 — Validation
   if (trimmed === '') {
     errorEl.textContent = 'Task cannot be empty.';
     return;
@@ -196,116 +291,99 @@ function addTask() {
     return;
   }
 
-  // 13.2 — Create task object and persist
   const newTask = {
-    id: Date.now() + '-' + Math.random(),
-    description: trimmed,          // stored as plain string; rendered via textContent in renderTasks()
-    completed: false,
-    createdAt: Date.now()
+    id:          Date.now() + '-' + Math.random(),
+    description: trimmed,
+    completed:   false,
+    createdAt:   Date.now()
   };
 
   tasks.push(newTask);
   saveTasksToStorage();
   renderTasks();
 
-  input.value = '';
+  input.value         = '';
   errorEl.textContent = '';
 }
 
-// --- To-Do List — edit task (Task 14) ---
+// ============================================================
+// To-Do List — edit task (Task 14)
+// ============================================================
 
-// 14.1 — Replace the read-only <span> with an inline edit <input> + Save/Cancel/error elements.
-// Called from the delegated listener (Task 21.2) when the Edit button is clicked.
 function enterEditMode(id) {
-  const li = document.querySelector(`#task-list li[data-id="${id}"]`);
+  const li = document.querySelector('#task-list li[data-id="' + id + '"]');
   if (!li) return;
 
-  // Retrieve current description from the tasks array (source of truth)
   const task = tasks.find(t => t.id === id);
   if (!task) return;
   const currentDescription = task.description;
 
-  // Remove the read-only <span>
   const span = li.querySelector('span');
   if (span) li.removeChild(span);
 
-  // Hide the Edit button while editing (it will be restored by renderTasks on save/cancel)
   const editBtn = li.querySelector('[data-action="edit"]');
   if (editBtn) editBtn.style.display = 'none';
 
-  // Build the edit <input> — pre-fill via .value, never innerHTML
   const input = document.createElement('input');
-  input.type = 'text';
-  input.value = currentDescription;   // safe: .value assignment, not innerHTML
+  input.type          = 'text';
+  input.value         = currentDescription;
   input.dataset.action = 'edit-input';
   input.classList.add('edit-input');
 
-  // Save button
   const saveBtn = document.createElement('button');
-  saveBtn.textContent = 'Save';
+  saveBtn.textContent   = 'Save';
   saveBtn.dataset.action = 'save';
 
-  // Cancel button
   const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = 'Cancel';
+  cancelBtn.textContent   = 'Cancel';
   cancelBtn.dataset.action = 'cancel';
 
-  // Inline error element (initially empty)
   const errorEl = document.createElement('span');
   errorEl.dataset.role = 'edit-error';
   errorEl.classList.add('edit-error');
-  // textContent is intentionally left empty until a validation failure occurs
 
-  // Insert after the checkbox
-  const checkbox = li.querySelector('input[type="checkbox"]');
-  const afterCheckbox = checkbox ? checkbox.nextSibling : li.firstChild;
+  const checkbox        = li.querySelector('input[type="checkbox"]');
+  const afterCheckbox   = checkbox ? checkbox.nextSibling : li.firstChild;
 
-  li.insertBefore(input, afterCheckbox);
-  li.insertBefore(saveBtn, input.nextSibling);
+  li.insertBefore(input,     afterCheckbox);
+  li.insertBefore(saveBtn,   input.nextSibling);
   li.insertBefore(cancelBtn, saveBtn.nextSibling);
-  li.insertBefore(errorEl, cancelBtn.nextSibling);
+  li.insertBefore(errorEl,   cancelBtn.nextSibling);
 
-  // Focus the input so the user can start typing immediately
   input.focus();
 }
 
-// 14.2 — Validate the new description and persist if valid; show inline error without
-//         reverting to read-only mode on failure.
 function editTask(id, newDesc) {
   const trimmed = newDesc.trim();
 
-  // Helper: find the inline error element inside the editing <li>
-  const li = document.querySelector(`#task-list li[data-id="${id}"]`);
+  const li      = document.querySelector('#task-list li[data-id="' + id + '"]');
   const errorEl = li ? li.querySelector('[data-role="edit-error"]') : null;
 
-  // Validation — empty
   if (trimmed === '') {
     if (errorEl) errorEl.textContent = 'Task cannot be empty.';
-    return; // keep edit UI visible
+    return;
   }
 
-  // Validation — duplicate (exclude the task being edited)
   if (isDuplicate(trimmed, id)) {
     if (errorEl) errorEl.textContent = 'A task with this name already exists.';
-    return; // keep edit UI visible
+    return;
   }
 
-  // Valid — update the task object in memory, persist, re-render
   const task = tasks.find(t => t.id === id);
   if (!task) return;
 
-  task.description = trimmed;   // original is preserved until this line succeeds
+  task.description = trimmed;
   saveTasksToStorage();
   renderTasks();
 }
 
-// --- Quick Links — URL validation and add link (Task 18) ---
+// ============================================================
+// Quick Links — URL validation and add link (Task 18)
+// ============================================================
 
-// 18.1 — Normalize and validate a URL string; return the normalized URL or null on failure
 function validateURL(url) {
   let normalized = url.trim();
 
-  // Prepend https:// if no recognized protocol is present
   if (!normalized.toLowerCase().startsWith('http://') && !normalized.toLowerCase().startsWith('https://')) {
     normalized = 'https://' + normalized;
   }
@@ -321,7 +399,6 @@ function validateURL(url) {
   }
 }
 
-// 18.2 — Validate inputs, create a link object, persist, and render
 function addLink() {
   const nameInput = document.getElementById('link-name-input');
   const urlInput  = document.getElementById('link-url-input');
@@ -330,117 +407,99 @@ function addLink() {
   const trimmedName = nameInput.value.trim();
   const trimmedURL  = urlInput.value.trim();
 
-  // Name validation
   if (trimmedName === '') {
     errorEl.textContent = 'Link name cannot be empty.';
     return;
   }
 
-  // URL presence validation
   if (trimmedURL === '') {
     errorEl.textContent = 'URL cannot be empty.';
     return;
   }
 
-  // URL format validation
   const normalizedURL = validateURL(trimmedURL);
   if (normalizedURL === null) {
     errorEl.textContent = 'Please enter a valid URL.';
     return;
   }
 
-  // Create link object and persist
   const newLink = {
-    id: Date.now() + '-' + Math.random(),
-    name: trimmedName,   // stored as plain string; rendered via textContent in renderLinks()
-    url: normalizedURL
+    id:   Date.now() + '-' + Math.random(),
+    name: trimmedName,
+    url:  normalizedURL
   };
 
   links.push(newLink);
   saveLinksToStorage();
   renderLinks();
 
-  // Clear inputs and error
-  nameInput.value = '';
-  urlInput.value  = '';
+  nameInput.value     = '';
+  urlInput.value      = '';
   errorEl.textContent = '';
 }
 
-// --- To-Do List — sort (Task 16) ---
+// ============================================================
+// To-Do List — sort (Task 16)
+// ============================================================
 
-// 16.1 — Return a sorted copy of tasks; never mutate the tasks array
 function getSortedTasks() {
   const copy = tasks.slice();
 
   if (currentSort === 'alphabetical') {
     copy.sort((a, b) => a.description.toLowerCase().localeCompare(b.description.toLowerCase()));
   } else if (currentSort === 'completion') {
-    // Incomplete first; within each group preserve creation order (stable)
     copy.sort((a, b) => {
-      if (a.completed !== b.completed) {
-        return a.completed ? 1 : -1; // false (incomplete) sorts before true (complete)
-      }
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
       return a.createdAt - b.createdAt;
     });
   } else {
-    // 'creation' — ascending by createdAt (default)
     copy.sort((a, b) => a.createdAt - b.createdAt);
   }
 
   return copy;
 }
 
-// 16.2 — Wire the three sort buttons; called by attachEventListeners() (Task 21)
-// Each button carries a data-sort attribute matching the currentSort values.
 function initSortButtons() {
   const sortButtons = document.querySelectorAll('.sort-btn');
   sortButtons.forEach(btn => {
     btn.addEventListener('click', () => {
-      currentSort = btn.dataset.sort; // 'creation' | 'alphabetical' | 'completion'
-
-      // Update active class
+      currentSort = btn.dataset.sort;
       sortButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-
       renderTasks();
     });
   });
 }
 
-// --- To-Do List — render tasks (Task 12) ---
+// ============================================================
+// To-Do List — render tasks (Task 12)
+// ============================================================
 
-// Renders the task list by sorting tasks and building DOM nodes safely via textContent
 function renderTasks() {
   const list = document.getElementById('task-list');
-  list.innerHTML = ''; // clear existing items
+  list.innerHTML = '';
 
   const sorted = getSortedTasks();
 
   sorted.forEach(task => {
-    const li = document.createElement('li');
-    li.dataset.id = task.id;
+    const li       = document.createElement('li');
+    li.dataset.id  = task.id;
 
-    // Checkbox
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
+    const checkbox   = document.createElement('input');
+    checkbox.type    = 'checkbox';
     checkbox.checked = task.completed;
     checkbox.dataset.action = 'toggle';
 
-    // Description span — use textContent for safe insertion
-    const span = document.createElement('span');
-    span.textContent = task.description;
-    if (task.completed) {
-      span.classList.add('completed'); // CSS: text-decoration: line-through
-    }
+    const span        = document.createElement('span');
+    span.textContent  = task.description;
+    if (task.completed) span.classList.add('completed');
 
-    // Edit button
-    const editBtn = document.createElement('button');
-    editBtn.textContent = 'Edit';
+    const editBtn        = document.createElement('button');
+    editBtn.textContent  = 'Edit';
     editBtn.dataset.action = 'edit';
 
-    // Delete button
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Delete';
+    const deleteBtn        = document.createElement('button');
+    deleteBtn.textContent  = 'Delete';
     deleteBtn.dataset.action = 'delete';
 
     li.appendChild(checkbox);
@@ -452,28 +511,27 @@ function renderTasks() {
   });
 }
 
-// --- Quick Links — render and delete (Tasks 19.1 / 19.2) ---
+// ============================================================
+// Quick Links — render and delete (Tasks 19.1 / 19.2)
+// ============================================================
 
-// 19.1 — Clear #links-list and re-render all links from the links array
 function renderLinks() {
   const list = document.getElementById('links-list');
-  list.innerHTML = ''; // clear existing items
+  list.innerHTML = '';
 
   links.forEach(link => {
     const li = document.createElement('li');
 
-    // Anchor — use textContent, never innerHTML
-    const anchor = document.createElement('a');
-    anchor.href = link.url;
-    anchor.target = '_blank';
-    anchor.rel = 'noopener noreferrer';
+    const anchor    = document.createElement('a');
+    anchor.href     = link.url;
+    anchor.target   = '_blank';
+    anchor.rel      = 'noopener noreferrer';
     anchor.textContent = link.name;
 
-    // Delete button — separate from the anchor, not inside it
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Delete';
+    const deleteBtn        = document.createElement('button');
+    deleteBtn.textContent  = 'Delete';
     deleteBtn.dataset.action = 'delete';
-    deleteBtn.dataset.id = link.id;
+    deleteBtn.dataset.id     = link.id;
 
     li.appendChild(anchor);
     li.appendChild(deleteBtn);
@@ -482,16 +540,16 @@ function renderLinks() {
   });
 }
 
-// 19.2 — Remove a link by id, persist, and re-render
 function deleteLink(id) {
   links = links.filter(link => link.id !== id);
   saveLinksToStorage();
   renderLinks();
 }
 
-// --- Theme (Tasks 20.1 / 20.2) ---
+// ============================================================
+// Theme (Tasks 20.1 / 20.2)
+// ============================================================
 
-// 20.1 — Apply a theme visually; does NOT write to Local Storage
 function applyTheme(theme) {
   currentTheme = theme;
   document.body.setAttribute('data-theme', theme);
@@ -504,30 +562,40 @@ function applyTheme(theme) {
   }
 }
 
-// 20.2 — Toggle between light/dark; this is the ONLY place that writes theme to Local Storage
 function toggleTheme() {
   const next = currentTheme === 'light' ? 'dark' : 'light';
   applyTheme(next);
   saveThemeToStorage(next);
 }
 
-// --- Event Listeners (Task 21) ---
+// ============================================================
+// Event Listeners (Task 21)
+// ============================================================
 
 function attachEventListeners() {
-  // 21.1 — Direct bindings
+  // 21.1 — Direct bindings (unchanged)
   document.getElementById('btn-add-task').addEventListener('click', addTask);
-
-  document.getElementById('task-input').addEventListener('keydown', function (event) {
-    if (event.key === 'Enter') addTask();
+  document.getElementById('task-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') addTask();
   });
-
   document.getElementById('btn-add-link').addEventListener('click', addLink);
   document.getElementById('btn-theme-toggle').addEventListener('click', toggleTheme);
   document.getElementById('btn-start').addEventListener('click', startTimer);
   document.getElementById('btn-stop').addEventListener('click', stopTimer);
   document.getElementById('btn-reset').addEventListener('click', resetTimer);
 
-  // 21.2 — Delegated listener on #task-list (handles both click and change)
+  // Bonus — name editor bindings
+  document.getElementById('btn-edit-name').addEventListener('click', openNameEditor);
+  document.getElementById('btn-save-name').addEventListener('click', saveName);
+  document.getElementById('btn-cancel-name').addEventListener('click', cancelName);
+
+  // Allow pressing Enter in the name input to save (mirrors the task input UX).
+  document.getElementById('name-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter')  saveName();
+    if (e.key === 'Escape') cancelName();
+  });
+
+  // 21.2 — Delegated listener on #task-list
   const taskList = document.getElementById('task-list');
 
   function handleTaskListEvent(event) {
@@ -545,7 +613,7 @@ function attachEventListeners() {
       if (action === 'edit') {
         enterEditMode(id);
       } else if (action === 'save') {
-        const editInput = li.querySelector('[data-action="edit-input"]');
+        const editInput  = li.querySelector('[data-action="edit-input"]');
         const inputValue = editInput ? editInput.value : '';
         editTask(id, inputValue);
       } else if (action === 'cancel') {
@@ -556,7 +624,7 @@ function attachEventListeners() {
     }
   }
 
-  taskList.addEventListener('click', handleTaskListEvent);
+  taskList.addEventListener('click',  handleTaskListEvent);
   taskList.addEventListener('change', handleTaskListEvent);
 
   // 21.3 — Delegated listener on #links-list
@@ -566,21 +634,23 @@ function attachEventListeners() {
     }
   });
 
-  // Wire sort buttons
   initSortButtons();
 }
 
-// --- Initialization (Task 6) ---
+// ============================================================
+// Initialization (Task 6)
+// ============================================================
 
 function init() {
-  loadFromStorage();
+  loadFromStorage();    // loads tasks, links, theme, AND userName
   applyTheme(currentTheme);
   renderTasks();
   renderLinks();
   renderTimerDisplay();
-  updateGreeting();
+  updateGreeting();           // uses userName if already loaded
   setInterval(updateGreeting, 60000);
   updateTimerButtons();
+  updateNameUI();             // set trigger label + pre-fill input from stored name
   attachEventListeners();
 }
 

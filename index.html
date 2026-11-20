@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -18,9 +18,34 @@
 
     <!-- Greeting Widget -->
     <section class="card greeting-widget">
-      <h2 id="greeting-text">Good Morning</h2>
+      <!-- Greeting line: shows "Good Morning!" or "Good Morning, Nabila!" -->
+      <h2 id="greeting-text">Good Morning!</h2>
       <p id="current-time">00:00</p>
       <p id="current-date">Monday, January 1, 2024</p>
+
+      <!--
+        Name editor — hidden by default (class "hidden" toggles visibility).
+        Shown when the user clicks the edit-name button.
+      -->
+      <div id="name-editor" class="name-editor hidden">
+        <input
+          type="text"
+          id="name-input"
+          placeholder="Enter your name…"
+          aria-label="Your preferred name"
+          maxlength="40"
+        />
+        <div class="name-editor-actions">
+          <button id="btn-save-name">Save</button>
+          <button id="btn-cancel-name" class="btn-ghost">Cancel</button>
+        </div>
+      </div>
+
+      <!--
+        Edit-name trigger — always visible at the bottom of the card.
+        Label switches between "✏ Set name" and "✏ Edit name" via JS.
+      -->
+      <button id="btn-edit-name" class="btn-name-trigger">✏ Set name</button>
     </section>
 
     <!-- Focus Timer Widget -->
