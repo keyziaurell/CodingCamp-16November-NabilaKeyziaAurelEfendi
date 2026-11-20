@@ -1,5 +1,5 @@
-/* ============================================================
-   Life Dashboard — Complete UI/UX Redesign v3
+﻿/* ============================================================
+   Life Dashboard — Final Revision
    Dark navy + soft purple theme
    ============================================================ */
 
@@ -353,7 +353,7 @@ input[type="url"]:focus {
   white-space: nowrap;
 }
 
-/* â”€â”€ Timer Status Message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Timer Status Message ─────────────────────────────────── */
 .timer-status {
   font-size: 0.875rem;
   font-weight: 600;
@@ -576,7 +576,6 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
   flex-shrink: 0;
 }
 
-/* Base button styling for all task-list buttons */
 #task-list button {
   font-size: 0.75rem;
   padding: 0.25rem 0.6rem;
@@ -642,7 +641,6 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
   opacity: 1;
 }
 
-/* Edit input inside task list */
 .edit-input {
   flex: 1;
   font-size: 0.9375rem;
@@ -699,11 +697,14 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
   margin-top: 0.75rem;
 }
 
+/* li is a flex container so the anchor fills the entire card */
 .link-card {
   position: relative;
+  display: flex;
 }
 
 .link-card a {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -714,11 +715,13 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: 500;
-  padding: 1.75rem 1.25rem;
+  padding: 2rem 1rem 1.25rem;
   border-radius: var(--radius-card);
-  min-height: 3.5rem;
+  min-height: 4.5rem;
+  overflow: hidden;
   overflow-wrap: break-word;
   word-break: break-word;
+  box-sizing: border-box;
   transition: filter 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
 }
 
@@ -733,20 +736,24 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
   transform: scale(0.98);
 }
 
-/* Favicon inside link card */
+/* Favicon inside link card — pointer-events:none so clicks
+   always reach the anchor element for navigation */
 .link-favicon {
   width: 16px;
   height: 16px;
   border-radius: 0.25rem;
   flex-shrink: 0;
+  object-fit: contain;
+  pointer-events: none;
 }
 
-/* Link name text inside card */
+/* Link name text — same pointer-events treatment */
 .link-name-text {
   overflow-wrap: break-word;
   word-break: break-word;
   text-align: center;
   min-width: 0;
+  pointer-events: none;
 }
 
 /* ── Empty State ───────────────────────────────────────────── */
@@ -778,7 +785,7 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 1;
+  z-index: 2;
   transition: background-color 0.2s ease, opacity 0.2s ease;
 }
 
@@ -886,27 +893,48 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
     flex: 1 1 auto;
   }
 
+  /* Timer: add generous spacing for mobile comfort */
+  .timer-ring-wrapper {
+    margin: 1rem 0 0.75rem;
+    min-height: 130px;
+  }
+
+  .timer-ring {
+    width: 130px;
+    height: 130px;
+  }
+
   #timer-display {
     font-size: 2.25rem;
   }
 
-  .timer-ring {
-    width: 120px;
-    height: 120px;
+  .timer-status {
+    margin-bottom: 0.75rem;
   }
 
-  .timer-ring-wrapper {
-    min-height: 120px;
+  .timer-controls button {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+  }
+
+  .timer-duration-row {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
   }
 
   #links-list {
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: 0.625rem;
   }
+
+  .link-card a {
+    min-height: 4rem;
+    padding: 1.75rem 0.875rem 1rem;
+  }
 }
 
-/* ── Small mobile (iPhone SE / <= 380px) ──────────────────── */
-@media (max-width: 380px) {
+/* ── Small mobile (<= 430px) ──────────────────────────────── */
+@media (max-width: 430px) {
   .top-bar {
     padding: 0.75rem 0.875rem;
   }
@@ -916,7 +944,7 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
   }
 
   .card {
-    padding: 1rem;
+    padding: 1.125rem;
   }
 
   .card h2 {
@@ -931,6 +959,17 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
     font-size: 2.25rem;
   }
 
+  /* Timer: even more breathing room on very small screens */
+  .timer-ring-wrapper {
+    margin: 1.25rem 0 1rem;
+    min-height: 120px;
+  }
+
+  .timer-ring {
+    width: 120px;
+    height: 120px;
+  }
+
   #timer-display {
     font-size: 2rem;
   }
@@ -940,8 +979,14 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
   }
 
   .timer-controls button {
-    padding: 0.45rem 0.75rem;
+    padding: 0.5rem 0.75rem;
     font-size: 0.8125rem;
+  }
+
+  .timer-duration-row {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    gap: 0.4rem;
   }
 
   .sort-controls {
@@ -971,9 +1016,9 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
   }
 
   .link-card a {
-    padding: 1.25rem 0.75rem;
+    padding: 1.5rem 0.75rem 1rem;
     font-size: 0.8125rem;
-    min-height: 3rem;
+    min-height: 3.5rem;
   }
 
   .link-delete-btn {
@@ -983,5 +1028,35 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
     font-size: 0.75rem;
     top: 0.25rem;
     right: 0.25rem;
+  }
+}
+
+/* ── Very small mobile (<= 360px) ─────────────────────────── */
+@media (max-width: 360px) {
+  .card {
+    padding: 1rem;
+  }
+
+  #links-list {
+    gap: 0.4rem;
+  }
+
+  .link-card a {
+    padding: 1.25rem 0.5rem 0.875rem;
+    font-size: 0.75rem;
+    min-height: 3.25rem;
+  }
+
+  .timer-ring-wrapper {
+    min-height: 110px;
+  }
+
+  .timer-ring {
+    width: 110px;
+    height: 110px;
+  }
+
+  #timer-display {
+    font-size: 1.75rem;
   }
 }
