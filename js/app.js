@@ -1,4 +1,4 @@
-﻿// app.js — Life Dashboard application logic
+// app.js — Life Dashboard application logic
 
 // ============================================================
 // State Variables
@@ -112,7 +112,7 @@ function updateGreeting() {
 function updateNameUI() {
   const triggerBtn = document.getElementById('btn-edit-name');
   const nameInput  = document.getElementById('name-input');
-  triggerBtn.textContent = userName ? '\u270F Edit name' : '\u270F Set name';
+  triggerBtn.textContent = userName ? 'Edit name' : 'Set name';
   nameInput.value        = userName;
 }
 
@@ -156,6 +156,26 @@ function renderTimerDisplay() {
   const el = document.getElementById('timer-display');
   el.textContent = display;
   el.classList.remove('timer-complete');
+  const statusEl = document.getElementById('timer-status');
+  if (statusEl) statusEl.textContent = '';
+  updateTimerRing();
+}
+
+// ============================================================
+// Focus Timer — circular progress ring (UI refinement)
+// Updates the SVG stroke-dashoffset to visually represent elapsed
+// time. Reads existing timerSeconds and timerDurationMinutes;
+// does not modify any timer logic.
+// ============================================================
+
+function updateTimerRing() {
+  const ring = document.querySelector('.timer-ring-progress');
+  if (!ring) return;
+  const total = timerDurationMinutes * 60;
+  const progress = total > 0 ? 1 - (timerSeconds / total) : 0;
+  const circumference = 2 * Math.PI * 54;
+  const offset = circumference * (1 - Math.max(0, Math.min(1, progress)));
+  ring.style.strokeDashoffset = String(offset);
 }
 
 function timerTick() {
@@ -163,9 +183,8 @@ function timerTick() {
   renderTimerDisplay();
   if (timerSeconds === 0) {
     stopTimer();
-    const display = document.getElementById('timer-display');
-    display.textContent = 'Session complete!';
-    display.classList.add('timer-complete');
+    const statusEl = document.getElementById('timer-status');
+    if (statusEl) statusEl.textContent = 'Session complete!';
   }
 }
 
@@ -371,10 +390,12 @@ function enterEditMode(id) {
   const saveBtn          = document.createElement('button');
   saveBtn.textContent    = 'Save';
   saveBtn.dataset.action = 'save';
+  saveBtn.className      = 'task-btn-save';
 
   const cancelBtn          = document.createElement('button');
   cancelBtn.textContent    = 'Cancel';
   cancelBtn.dataset.action = 'cancel';
+  cancelBtn.className      = 'task-btn-cancel';
 
   const errorEl        = document.createElement('span');
   errorEl.dataset.role = 'edit-error';
@@ -508,6 +529,22 @@ function renderTasks() {
   const list = document.getElementById('task-list');
   list.innerHTML = '';
 
+  // Update progress indicator
+  const progressEl = document.getElementById('task-progress');
+  if (progressEl) {
+    const total     = tasks.length;
+    const completed = tasks.filter(t => t.completed).length;
+    const textEl    = progressEl.querySelector('.task-progress-text');
+    const fillEl    = progressEl.querySelector('.task-progress-fill');
+    if (total > 0) {
+      if (textEl) textEl.textContent = completed + ' / ' + total + ' done';
+      if (fillEl) fillEl.style.width = Math.round((completed / total) * 100) + '%';
+      progressEl.style.display = 'flex';
+    } else {
+      progressEl.style.display = 'none';
+    }
+  }
+
   getSortedTasks().forEach(task => {
     const li         = document.createElement('li');
     li.dataset.id    = task.id;
@@ -522,12 +559,16 @@ function renderTasks() {
     if (task.completed) span.classList.add('completed');
 
     const editBtn          = document.createElement('button');
-    editBtn.textContent    = 'Edit';
+    editBtn.className      = 'task-btn-edit';
     editBtn.dataset.action = 'edit';
+    editBtn.title          = 'Edit';
+    editBtn.innerHTML      = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
 
     const deleteBtn          = document.createElement('button');
-    deleteBtn.textContent    = 'Delete';
+    deleteBtn.className      = 'task-btn-delete';
     deleteBtn.dataset.action = 'delete';
+    deleteBtn.title          = 'Delete';
+    deleteBtn.innerHTML      = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
 
     li.appendChild(checkbox);
     li.appendChild(span);
@@ -545,17 +586,42 @@ function renderLinks() {
   const list = document.getElementById('links-list');
   list.innerHTML = '';
 
+  if (links.length === 0) {
+    const emptyMsg = document.createElement('p');
+    emptyMsg.className = 'links-empty';
+    emptyMsg.textContent = 'Your shortcuts will appear here.';
+    list.appendChild(emptyMsg);
+    return;
+  }
+
   links.forEach(link => {
     const li = document.createElement('li');
+    li.className = 'link-card';
 
     const anchor       = document.createElement('a');
     anchor.href        = link.url;
     anchor.target      = '_blank';
     anchor.rel         = 'noopener noreferrer';
-    anchor.textContent = link.name;
+    const favicon      = document.createElement('img');
+    favicon.className   = 'link-favicon';
+    favicon.src         = 'https://www.google.com/s2/favicons?domain=' + new URL(link.url).hostname + '&sz=32';
+    favicon.alt         = '';
+    favicon.width       = 16;
+    favicon.height      = 16;
+    favicon.loading     = 'lazy';
+    favicon.onerror     = function() { this.style.display = 'none'; };
+
+    const linkText      = document.createElement('span');
+    linkText.className   = 'link-name-text';
+    linkText.textContent = link.name;
+
+    anchor.appendChild(favicon);
+    anchor.appendChild(linkText);
 
     const deleteBtn          = document.createElement('button');
-    deleteBtn.textContent    = 'Delete';
+    deleteBtn.textContent    = '\u00D7';
+    deleteBtn.className      = 'link-delete-btn';
+    deleteBtn.setAttribute('aria-label', 'Delete ' + link.name);
     deleteBtn.dataset.action = 'delete';
     deleteBtn.dataset.id     = link.id;
 
@@ -658,6 +724,8 @@ function attachEventListeners() {
   // Delegated listener on #links-list
   document.getElementById('links-list').addEventListener('click', function (event) {
     if (event.target.dataset.action === 'delete') {
+      event.preventDefault();
+      event.stopPropagation();
       deleteLink(event.target.dataset.id);
     }
   });
