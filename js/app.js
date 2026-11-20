@@ -5,14 +5,17 @@
 // ============================================================
 let tasks        = [];
 let links        = [];
-let timerSeconds = 1500;      // never persisted
+let timerSeconds = 1500;      // current countdown value; never persisted
 let timerRunning = false;     // never persisted
 let timerIntervalId = null;   // never persisted
 let currentTheme = 'light';
 let currentSort  = 'creation'; // never persisted
 
+// Change Pomodoro Time — the saved duration in whole minutes.
+// Default is 25; loaded from localStorage key "ld_timer_duration".
+let timerDurationMinutes = 25;
+
 // Bonus — Custom Name in Greeting
-// Loaded from localStorage key "ld_name" (plain string, no JSON).
 let userName = '';
 
 // ============================================================
@@ -22,7 +25,7 @@ let userName = '';
 function loadFromStorage() {
   // ld_tasks
   try {
-    const raw = localStorage.getItem('ld_tasks');
+    const raw    = localStorage.getItem('ld_tasks');
     const parsed = JSON.parse(raw);
     tasks = Array.isArray(parsed) ? parsed : [];
   } catch (e) {
@@ -31,7 +34,7 @@ function loadFromStorage() {
 
   // ld_links
   try {
-    const raw = localStorage.getItem('ld_links');
+    const raw    = localStorage.getItem('ld_links');
     const parsed = JSON.parse(raw);
     links = Array.isArray(parsed) ? parsed : [];
   } catch (e) {
@@ -43,9 +46,21 @@ function loadFromStorage() {
   currentTheme = savedTheme === 'dark' ? 'dark' : 'light';
 
   // ld_name — plain string, never JSON.parse()
-  // If the key was never set, getItem returns null; treat that as empty string.
   const savedName = localStorage.getItem('ld_name');
   userName = (typeof savedName === 'string') ? savedName : '';
+
+  // ld_timer_duration — stored as a plain integer string, e.g. "30".
+  // Parse it and validate: must be a positive whole number.
+  // Falls back to 25 if the stored value is missing, non-numeric, or invalid.
+  const rawDuration = localStorage.getItem('ld_timer_duration');
+  const parsedDuration = parseInt(rawDuration, 10);
+  timerDurationMinutes = (Number.isInteger(parsedDuration) && parsedDuration >= 1)
+    ? parsedDuration
+    : 25;
+
+  // Set timerSeconds to match the loaded duration so the display is
+  // correct before the user ever touches the timer.
+  timerSeconds = timerDurationMinutes * 60;
 }
 
 function saveTasksToStorage() {
@@ -65,11 +80,10 @@ function saveThemeToStorage(theme) {
 // ============================================================
 
 function updateGreeting() {
-  const now   = new Date();
+  const now     = new Date();
   const hours   = now.getHours();
   const minutes = now.getMinutes();
 
-  // 7.1 — Time and date display
   const hh = String(hours).padStart(2, '0');
   const mm = String(minutes).padStart(2, '0');
   document.getElementById('current-time').textContent = hh + ':' + mm;
@@ -81,22 +95,12 @@ function updateGreeting() {
     day:     'numeric'
   });
 
-  // 7.2 — Time-based greeting band
   let band;
-  if (hours >= 5 && hours <= 11) {
-    band = 'Good Morning';
-  } else if (hours >= 12 && hours <= 17) {
-    band = 'Good Afternoon';
-  } else if (hours >= 18 && hours <= 20) {
-    band = 'Good Evening';
-  } else {
-    band = 'Good Night';
-  }
+  if      (hours >= 5  && hours <= 11) { band = 'Good Morning';   }
+  else if (hours >= 12 && hours <= 17) { band = 'Good Afternoon'; }
+  else if (hours >= 18 && hours <= 20) { band = 'Good Evening';   }
+  else                                 { band = 'Good Night';     }
 
-  // Bonus — append the saved name when present.
-  // No name  ->  "Good Morning!"
-  // Name set ->  "Good Morning, Nabila!"
-  // The exclamation mark is always added exactly once; no double punctuation.
   const suffix = userName.trim() ? ', ' + userName.trim() + '!' : '!';
   document.getElementById('greeting-text').textContent = band + suffix;
 }
@@ -105,80 +109,37 @@ function updateGreeting() {
 // Bonus — Custom Name in Greeting
 // ============================================================
 
-/*
-  updateNameUI
-  Syncs the trigger button label and the editor input with the
-  current value of `userName`. Called after every save/remove.
-*/
 function updateNameUI() {
   const triggerBtn = document.getElementById('btn-edit-name');
   const nameInput  = document.getElementById('name-input');
-
-  // Button label tells the user whether they are setting or editing.
-  triggerBtn.textContent = userName ? '✏ Edit name' : '✏ Set name';
-
-  // Pre-fill the input with the saved name so the user can edit in place.
-  nameInput.value = userName;
+  triggerBtn.textContent = userName ? '\u270F Edit name' : '\u270F Set name';
+  nameInput.value        = userName;
 }
 
-/*
-  openNameEditor
-  Shows #name-editor and hides the trigger button, then moves
-  keyboard focus into the input field for immediate typing.
-*/
 function openNameEditor() {
-  const editor     = document.getElementById('name-editor');
-  const triggerBtn = document.getElementById('btn-edit-name');
-
-  editor.classList.remove('hidden');
-  triggerBtn.classList.add('hidden');
-
-  // Focus the input so the user can type straight away.
+  document.getElementById('name-editor').classList.remove('hidden');
+  document.getElementById('btn-edit-name').classList.add('hidden');
   document.getElementById('name-input').focus();
 }
 
-/*
-  closeNameEditor
-  Hides the editor panel and restores the trigger button.
-  Does NOT modify userName — just closes the UI.
-*/
 function closeNameEditor() {
   document.getElementById('name-editor').classList.add('hidden');
   document.getElementById('btn-edit-name').classList.remove('hidden');
 }
 
-/*
-  saveName
-  Reads the input, trims whitespace, persists to localStorage,
-  updates the greeting immediately, and closes the editor.
-
-  Empty input = remove the name (greeting reverts to "Good Morning!").
-  Non-empty input = save and display "Good Morning, Nabila!".
-*/
 function saveName() {
   const trimmed = document.getElementById('name-input').value.trim();
-
   userName = trimmed;
-
   if (trimmed === '') {
-    // User cleared the name — remove the key from storage entirely.
     localStorage.removeItem('ld_name');
   } else {
-    // Store as a plain string, consistent with ld_theme.
     localStorage.setItem('ld_name', trimmed);
   }
-
-  updateGreeting();   // refresh greeting text with the new name
-  updateNameUI();     // flip trigger label between "Set name" and "Edit name"
-  closeNameEditor();  // hide the editor, restore the trigger button
+  updateGreeting();
+  updateNameUI();
+  closeNameEditor();
 }
 
-/*
-  cancelName
-  Discards any unsaved typing and closes the editor.
-  Restores the input to the last-saved userName so the next
-  time the editor opens it still shows the correct value.
-*/
 function cancelName() {
   document.getElementById('name-input').value = userName;
   closeNameEditor();
@@ -200,7 +161,6 @@ function renderTimerDisplay() {
 function timerTick() {
   timerSeconds = Math.max(0, timerSeconds - 1);
   renderTimerDisplay();
-
   if (timerSeconds === 0) {
     stopTimer();
     const display = document.getElementById('timer-display');
@@ -215,7 +175,7 @@ function timerTick() {
 
 function startTimer() {
   if (timerRunning === true) return;
-  if (timerSeconds === 0)   return;
+  if (timerSeconds === 0)    return;
   timerRunning    = true;
   timerIntervalId = setInterval(timerTick, 1000);
   updateTimerButtons();
@@ -228,9 +188,15 @@ function stopTimer() {
   updateTimerButtons();
 }
 
+/*
+  resetTimer — now resets to timerDurationMinutes instead of the
+  hardcoded 1500 (25 min). This is the only line that changed from
+  the original Task 9 implementation.
+  Default is still 25 min because timerDurationMinutes defaults to 25.
+*/
 function resetTimer() {
   stopTimer();
-  timerSeconds = 1500;
+  timerSeconds = timerDurationMinutes * 60;   // was: timerSeconds = 1500
   renderTimerDisplay();
   updateTimerButtons();
 }
@@ -239,10 +205,78 @@ function updateTimerButtons() {
   const btnStart = document.getElementById('btn-start');
   const btnStop  = document.getElementById('btn-stop');
   const btnReset = document.getElementById('btn-reset');
-
   btnStart.disabled = timerRunning || timerSeconds === 0;
   btnStop.disabled  = !timerRunning;
   btnReset.disabled = false;
+}
+
+// ============================================================
+// Change Pomodoro Time — apply duration
+// ============================================================
+
+/*
+  applyDuration
+  Reads #duration-input, validates it, persists the value, and
+  resets the timer to the new duration.
+
+  Validation rules (Requirement 4):
+  - Must not be empty.
+  - Must be a whole number (no decimals).
+  - Must be >= 1.
+  - Values > 999 are blocked by the input's max="999" attribute,
+    but we also guard here for programmatic calls.
+
+  On success:
+  - timerDurationMinutes is updated.
+  - Value saved to localStorage as a plain integer string.
+  - resetTimer() is called, which stops any running countdown and
+    sets timerSeconds = timerDurationMinutes * 60.
+  - Error message is cleared.
+
+  On failure:
+  - Error message is shown; nothing else changes.
+*/
+function applyDuration() {
+  const input   = document.getElementById('duration-input');
+  const errorEl = document.getElementById('duration-error');
+  const raw     = input.value.trim();
+
+  // Guard: empty field
+  if (raw === '') {
+    errorEl.textContent = 'Please enter a duration.';
+    return;
+  }
+
+  const parsed = Number(raw);
+
+  // Guard: must be a positive whole number (integer >= 1, no decimals)
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    errorEl.textContent = 'Duration must be a whole number of at least 1.';
+    return;
+  }
+
+  // Guard: very large values (belt-and-suspenders beyond the max attribute)
+  if (parsed > 999) {
+    errorEl.textContent = 'Duration must be 999 minutes or less.';
+    return;
+  }
+
+  // Valid — persist, update state, reset timer
+  timerDurationMinutes = parsed;
+  localStorage.setItem('ld_timer_duration', String(parsed));
+
+  errorEl.textContent = '';
+  resetTimer();   // stops any running countdown; sets timerSeconds = parsed * 60
+}
+
+/*
+  syncDurationInput
+  Writes the current timerDurationMinutes back into #duration-input.
+  Called once during init() so the field always shows the saved value
+  on page load, even before the user clicks Apply.
+*/
+function syncDurationInput() {
+  document.getElementById('duration-input').value = timerDurationMinutes;
 }
 
 // ============================================================
@@ -285,23 +319,20 @@ function addTask() {
     errorEl.textContent = 'Task cannot be empty.';
     return;
   }
-
   if (isDuplicate(trimmed, null)) {
     errorEl.textContent = 'A task with this name already exists.';
     return;
   }
 
-  const newTask = {
+  tasks.push({
     id:          Date.now() + '-' + Math.random(),
     description: trimmed,
     completed:   false,
     createdAt:   Date.now()
-  };
+  });
 
-  tasks.push(newTask);
   saveTasksToStorage();
   renderTasks();
-
   input.value         = '';
   errorEl.textContent = '';
 }
@@ -311,12 +342,9 @@ function addTask() {
 // ============================================================
 
 function enterEditMode(id) {
-  const li = document.querySelector('#task-list li[data-id="' + id + '"]');
-  if (!li) return;
-
-  const task = tasks.find(t => t.id === id);
-  if (!task) return;
-  const currentDescription = task.description;
+  const li   = document.querySelector('#task-list li[data-id="' + id + '"]');
+  const task = li && tasks.find(t => t.id === id);
+  if (!li || !task) return;
 
   const span = li.querySelector('span');
   if (span) li.removeChild(span);
@@ -324,26 +352,26 @@ function enterEditMode(id) {
   const editBtn = li.querySelector('[data-action="edit"]');
   if (editBtn) editBtn.style.display = 'none';
 
-  const input = document.createElement('input');
-  input.type          = 'text';
-  input.value         = currentDescription;
+  const input          = document.createElement('input');
+  input.type           = 'text';
+  input.value          = task.description;
   input.dataset.action = 'edit-input';
   input.classList.add('edit-input');
 
-  const saveBtn = document.createElement('button');
-  saveBtn.textContent   = 'Save';
+  const saveBtn          = document.createElement('button');
+  saveBtn.textContent    = 'Save';
   saveBtn.dataset.action = 'save';
 
-  const cancelBtn = document.createElement('button');
-  cancelBtn.textContent   = 'Cancel';
+  const cancelBtn          = document.createElement('button');
+  cancelBtn.textContent    = 'Cancel';
   cancelBtn.dataset.action = 'cancel';
 
-  const errorEl = document.createElement('span');
+  const errorEl        = document.createElement('span');
   errorEl.dataset.role = 'edit-error';
   errorEl.classList.add('edit-error');
 
-  const checkbox        = li.querySelector('input[type="checkbox"]');
-  const afterCheckbox   = checkbox ? checkbox.nextSibling : li.firstChild;
+  const checkbox      = li.querySelector('input[type="checkbox"]');
+  const afterCheckbox = checkbox ? checkbox.nextSibling : li.firstChild;
 
   li.insertBefore(input,     afterCheckbox);
   li.insertBefore(saveBtn,   input.nextSibling);
@@ -355,7 +383,6 @@ function enterEditMode(id) {
 
 function editTask(id, newDesc) {
   const trimmed = newDesc.trim();
-
   const li      = document.querySelector('#task-list li[data-id="' + id + '"]');
   const errorEl = li ? li.querySelector('[data-role="edit-error"]') : null;
 
@@ -363,7 +390,6 @@ function editTask(id, newDesc) {
     if (errorEl) errorEl.textContent = 'Task cannot be empty.';
     return;
   }
-
   if (isDuplicate(trimmed, id)) {
     if (errorEl) errorEl.textContent = 'A task with this name already exists.';
     return;
@@ -371,7 +397,6 @@ function editTask(id, newDesc) {
 
   const task = tasks.find(t => t.id === id);
   if (!task) return;
-
   task.description = trimmed;
   saveTasksToStorage();
   renderTasks();
@@ -383,11 +408,10 @@ function editTask(id, newDesc) {
 
 function validateURL(url) {
   let normalized = url.trim();
-
-  if (!normalized.toLowerCase().startsWith('http://') && !normalized.toLowerCase().startsWith('https://')) {
+  if (!normalized.toLowerCase().startsWith('http://') &&
+      !normalized.toLowerCase().startsWith('https://')) {
     normalized = 'https://' + normalized;
   }
-
   try {
     const parsed = new URL(normalized);
     if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || parsed.hostname === '') {
@@ -411,7 +435,6 @@ function addLink() {
     errorEl.textContent = 'Link name cannot be empty.';
     return;
   }
-
   if (trimmedURL === '') {
     errorEl.textContent = 'URL cannot be empty.';
     return;
@@ -423,16 +446,14 @@ function addLink() {
     return;
   }
 
-  const newLink = {
+  links.push({
     id:   Date.now() + '-' + Math.random(),
     name: trimmedName,
     url:  normalizedURL
-  };
+  });
 
-  links.push(newLink);
   saveLinksToStorage();
   renderLinks();
-
   nameInput.value     = '';
   urlInput.value      = '';
   errorEl.textContent = '';
@@ -444,7 +465,6 @@ function addLink() {
 
 function getSortedTasks() {
   const copy = tasks.slice();
-
   if (currentSort === 'alphabetical') {
     copy.sort((a, b) => a.description.toLowerCase().localeCompare(b.description.toLowerCase()));
   } else if (currentSort === 'completion') {
@@ -455,7 +475,6 @@ function getSortedTasks() {
   } else {
     copy.sort((a, b) => a.createdAt - b.createdAt);
   }
-
   return copy;
 }
 
@@ -479,34 +498,31 @@ function renderTasks() {
   const list = document.getElementById('task-list');
   list.innerHTML = '';
 
-  const sorted = getSortedTasks();
+  getSortedTasks().forEach(task => {
+    const li         = document.createElement('li');
+    li.dataset.id    = task.id;
 
-  sorted.forEach(task => {
-    const li       = document.createElement('li');
-    li.dataset.id  = task.id;
-
-    const checkbox   = document.createElement('input');
-    checkbox.type    = 'checkbox';
-    checkbox.checked = task.completed;
+    const checkbox          = document.createElement('input');
+    checkbox.type           = 'checkbox';
+    checkbox.checked        = task.completed;
     checkbox.dataset.action = 'toggle';
 
-    const span        = document.createElement('span');
-    span.textContent  = task.description;
+    const span         = document.createElement('span');
+    span.textContent   = task.description;
     if (task.completed) span.classList.add('completed');
 
-    const editBtn        = document.createElement('button');
-    editBtn.textContent  = 'Edit';
+    const editBtn          = document.createElement('button');
+    editBtn.textContent    = 'Edit';
     editBtn.dataset.action = 'edit';
 
-    const deleteBtn        = document.createElement('button');
-    deleteBtn.textContent  = 'Delete';
+    const deleteBtn          = document.createElement('button');
+    deleteBtn.textContent    = 'Delete';
     deleteBtn.dataset.action = 'delete';
 
     li.appendChild(checkbox);
     li.appendChild(span);
     li.appendChild(editBtn);
     li.appendChild(deleteBtn);
-
     list.appendChild(li);
   });
 }
@@ -522,20 +538,19 @@ function renderLinks() {
   links.forEach(link => {
     const li = document.createElement('li');
 
-    const anchor    = document.createElement('a');
-    anchor.href     = link.url;
-    anchor.target   = '_blank';
-    anchor.rel      = 'noopener noreferrer';
+    const anchor       = document.createElement('a');
+    anchor.href        = link.url;
+    anchor.target      = '_blank';
+    anchor.rel         = 'noopener noreferrer';
     anchor.textContent = link.name;
 
-    const deleteBtn        = document.createElement('button');
-    deleteBtn.textContent  = 'Delete';
+    const deleteBtn          = document.createElement('button');
+    deleteBtn.textContent    = 'Delete';
     deleteBtn.dataset.action = 'delete';
     deleteBtn.dataset.id     = link.id;
 
     li.appendChild(anchor);
     li.appendChild(deleteBtn);
-
     list.appendChild(li);
   });
 }
@@ -553,12 +568,11 @@ function deleteLink(id) {
 function applyTheme(theme) {
   currentTheme = theme;
   document.body.setAttribute('data-theme', theme);
-
   const btn = document.getElementById('btn-theme-toggle');
   if (theme === 'light') {
-    btn.textContent = '🌙 Dark';
+    btn.textContent = '\uD83C\uDF19 Dark';
   } else {
-    btn.textContent = '☀️ Light';
+    btn.textContent = '\u2600\uFE0F Light';
   }
 }
 
@@ -573,7 +587,7 @@ function toggleTheme() {
 // ============================================================
 
 function attachEventListeners() {
-  // 21.1 — Direct bindings (unchanged)
+  // Task controls (unchanged)
   document.getElementById('btn-add-task').addEventListener('click', addTask);
   document.getElementById('task-input').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') addTask();
@@ -584,18 +598,22 @@ function attachEventListeners() {
   document.getElementById('btn-stop').addEventListener('click', stopTimer);
   document.getElementById('btn-reset').addEventListener('click', resetTimer);
 
-  // Bonus — name editor bindings
+  // Change Pomodoro Time — Apply button and Enter key in the input
+  document.getElementById('btn-apply-duration').addEventListener('click', applyDuration);
+  document.getElementById('duration-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') applyDuration();
+  });
+
+  // Bonus — name editor
   document.getElementById('btn-edit-name').addEventListener('click', openNameEditor);
   document.getElementById('btn-save-name').addEventListener('click', saveName);
   document.getElementById('btn-cancel-name').addEventListener('click', cancelName);
-
-  // Allow pressing Enter in the name input to save (mirrors the task input UX).
   document.getElementById('name-input').addEventListener('keydown', function (e) {
     if (e.key === 'Enter')  saveName();
     if (e.key === 'Escape') cancelName();
   });
 
-  // 21.2 — Delegated listener on #task-list
+  // Delegated listener on #task-list
   const taskList = document.getElementById('task-list');
 
   function handleTaskListEvent(event) {
@@ -627,7 +645,7 @@ function attachEventListeners() {
   taskList.addEventListener('click',  handleTaskListEvent);
   taskList.addEventListener('change', handleTaskListEvent);
 
-  // 21.3 — Delegated listener on #links-list
+  // Delegated listener on #links-list
   document.getElementById('links-list').addEventListener('click', function (event) {
     if (event.target.dataset.action === 'delete') {
       deleteLink(event.target.dataset.id);
@@ -642,15 +660,16 @@ function attachEventListeners() {
 // ============================================================
 
 function init() {
-  loadFromStorage();    // loads tasks, links, theme, AND userName
+  loadFromStorage();       // loads tasks, links, theme, userName, timerDurationMinutes
   applyTheme(currentTheme);
   renderTasks();
   renderLinks();
-  renderTimerDisplay();
-  updateGreeting();           // uses userName if already loaded
+  renderTimerDisplay();    // timerSeconds is already set by loadFromStorage
+  updateGreeting();
   setInterval(updateGreeting, 60000);
   updateTimerButtons();
-  updateNameUI();             // set trigger label + pre-fill input from stored name
+  updateNameUI();
+  syncDurationInput();     // keep the number input in sync with the loaded duration
   attachEventListeners();
 }
 
