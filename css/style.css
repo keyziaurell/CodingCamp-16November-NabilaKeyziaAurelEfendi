@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    Life Dashboard — Final Revision
    Dark navy + soft purple theme
    ============================================================ */
@@ -503,6 +503,11 @@ input[type="number"]#duration-input::-webkit-outer-spin-button {
   background-color: var(--accent-color);
   color: #ffffff;
   border-color: var(--accent-color);
+}
+
+/* Keep text white when active button is also hovered (mobile tap leaves :hover active) */
+.sort-btn.active:hover:not(:disabled) {
+  color: #ffffff;
 }
 
 /* ── Task Progress Indicator ──────────────────────────────── */
